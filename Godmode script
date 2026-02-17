@@ -22,7 +22,7 @@ titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 titleBar.BackgroundTransparency = 0.2
 local titleText = Instance.new("TextLabel", titleBar)
 titleText.Size = UDim2.new(1, 0, 1, 0)
-titleText.Text = "godmode v3.7"
+titleText.Text = "godmode v3.8"
 titleText.TextColor3 = Color3.new(1, 1, 1)
 titleText.Font = Enum.Font.GothamBold
 titleText.TextSize = 14
@@ -53,6 +53,7 @@ end)
 UserInputService.InputEnded:Connect(function(input) if input == dragInput then dragging = false end end)
 
 local isGodmode, ghostClone, connection, noclipConn, deathConn = false, nil, nil, nil, nil
+local originalDistances = {}
 
 local function cleanup()
     isGodmode = false
@@ -63,13 +64,19 @@ local function cleanup()
     if noclipConn then noclipConn:Disconnect() noclipConn = nil end
     if deathConn then deathConn:Disconnect() deathConn = nil end
     
+    -- Restore original ProximityPrompt distances
+    for prompt, dist in pairs(originalDistances) do
+        if prompt and prompt.Parent then
+            prompt.MaxActivationDistance = dist
+        end
+    end
+    originalDistances = {}
+
     local char = player.Character
     if char then
-        -- Force Collisions back to normal instantly
         for _, v in pairs(char:GetDescendants()) do
             if v:IsA("BasePart") then v.CanCollide = true end
         end
-        
         local root = char:FindFirstChild("HumanoidRootPart")
         if root and ghostClone then root.CFrame = ghostClone.HumanoidRootPart.CFrame end
         if char:FindFirstChild("Humanoid") then 
@@ -123,6 +130,17 @@ godmodeBtn.MouseButton1Click:Connect(function()
                 if moveDir.Magnitude > 0 then
                     local targetRot = CFrame.lookAt(ghostClone.HumanoidRootPart.Position, ghostClone.HumanoidRootPart.Position + moveDir)
                     ghostClone.HumanoidRootPart.CFrame = ghostClone.HumanoidRootPart.CFrame:Lerp(targetRot, 0.25)
+                end
+                
+                -- Dynamic Expander (Only while Godmode is ON)
+                for _, p in pairs(workspace:GetDescendants()) do
+                    if p:IsA("ProximityPrompt") then
+                        if not originalDistances[p] then
+                            originalDistances[p] = p.MaxActivationDistance
+                        end
+                        p.MaxActivationDistance = 16 -- Perfect for 15 stud depth
+                        p.RequiresLineOfSight = false
+                    end
                 end
                 
                 char.HumanoidRootPart.CFrame = ghostClone.HumanoidRootPart.CFrame * CFrame.new(0, -15, 0)
