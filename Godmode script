@@ -22,7 +22,7 @@ titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 titleBar.BackgroundTransparency = 0.2
 local titleText = Instance.new("TextLabel", titleBar)
 titleText.Size = UDim2.new(1, 0, 1, 0)
-titleText.Text = "godmode v3.5"
+titleText.Text = "godmode v3.7"
 titleText.TextColor3 = Color3.new(1, 1, 1)
 titleText.Font = Enum.Font.GothamBold
 titleText.TextSize = 14
@@ -53,20 +53,29 @@ end)
 UserInputService.InputEnded:Connect(function(input) if input == dragInput then dragging = false end end)
 
 local isGodmode, ghostClone, connection, noclipConn, deathConn = false, nil, nil, nil, nil
-local lastPromptUpdate = 0
 
 local function cleanup()
     isGodmode = false
     godmodeBtn.Text = "Godmode: OFF"
     godmodeBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    
     if connection then connection:Disconnect() connection = nil end
     if noclipConn then noclipConn:Disconnect() noclipConn = nil end
     if deathConn then deathConn:Disconnect() deathConn = nil end
+    
     local char = player.Character
     if char then
+        -- Force Collisions back to normal instantly
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = true end
+        end
+        
         local root = char:FindFirstChild("HumanoidRootPart")
         if root and ghostClone then root.CFrame = ghostClone.HumanoidRootPart.CFrame end
-        if char:FindFirstChild("Humanoid") then char.Humanoid.PlatformStand = false camera.CameraSubject = char.Humanoid end
+        if char:FindFirstChild("Humanoid") then 
+            char.Humanoid.PlatformStand = false 
+            camera.CameraSubject = char.Humanoid 
+        end
     end
     if ghostClone then ghostClone:Destroy() ghostClone = nil end
 end
@@ -88,12 +97,7 @@ godmodeBtn.MouseButton1Click:Connect(function()
         
         for _, v in pairs(ghostClone:GetDescendants()) do
             if v:IsA("BasePart") then
-                -- Transparent but not invisible block logic
-                if v.Name:lower():find("root") or v.Name:lower():find("collision") then
-                    v.Transparency = 0.5 
-                else
-                    v.Transparency = 0
-                end
+                v.Transparency = (v.Name:lower():find("root") or v.Name:lower():find("collision")) and 0.5 or 0
                 v.CanCollide = true
             end
         end
@@ -103,7 +107,11 @@ godmodeBtn.MouseButton1Click:Connect(function()
         camera.CameraSubject = ghostClone.Humanoid
         
         noclipConn = RunService.Stepped:Connect(function()
-            if char then for _, v in pairs(char:GetChildren()) do if v:IsA("BasePart") then v.CanCollide = false end end end
+            if char then 
+                for _, v in pairs(char:GetDescendants()) do 
+                    if v:IsA("BasePart") then v.CanCollide = false end 
+                end 
+            end
         end)
 
         connection = RunService.Heartbeat:Connect(function()
@@ -115,16 +123,6 @@ godmodeBtn.MouseButton1Click:Connect(function()
                 if moveDir.Magnitude > 0 then
                     local targetRot = CFrame.lookAt(ghostClone.HumanoidRootPart.Position, ghostClone.HumanoidRootPart.Position + moveDir)
                     ghostClone.HumanoidRootPart.CFrame = ghostClone.HumanoidRootPart.CFrame:Lerp(targetRot, 0.25)
-                end
-                
-                if tick() - lastPromptUpdate > 0.5 then
-                    for _, p in pairs(workspace:GetDescendants()) do
-                        if p:IsA("ProximityPrompt") then
-                            p.MaxActivationDistance = 25
-                            p.RequiresLineOfSight = false
-                        end
-                    end
-                    lastPromptUpdate = tick()
                 end
                 
                 char.HumanoidRootPart.CFrame = ghostClone.HumanoidRootPart.CFrame * CFrame.new(0, -15, 0)
